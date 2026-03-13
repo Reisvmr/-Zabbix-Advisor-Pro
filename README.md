@@ -197,5 +197,3 @@ pytest tests/ -v
 ### Testes unitários
 
 - [pytest](https://docs.pytest.org/) — Framework de testes utilizado na suíte de testes unitários
-#   - Z a b b i x - A d v i s o r - P r o  
- 
