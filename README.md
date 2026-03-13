@@ -116,6 +116,8 @@ O banco SQLite é persistido em `./data/advisor.db` via volume no docker-compose
 | `token` | Sim | Token de API do Zabbix |
 | `frontend_url` | Não | URL do frontend para gerar links diretos no relatório |
 | `verify_ssl` | Não | Verificar certificado SSL (padrão: desabilitado) |
+
+---
 ![Logon](imagens/Logon.png)
 ## Ações de correção automática
 
