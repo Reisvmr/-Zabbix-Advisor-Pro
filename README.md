@@ -139,7 +139,7 @@ Todas as ações possuem **preview** antes de executar (dry-run mostrando o que 
 O relatório inclui duas seções de tuning baseadas nos dados coletados:
 
 ### zabbix_server.conf
-![Tuning sugerido Server](imagens\Tuning_Server.png)
+![Tuning sugerido Server](-Zabbix-Advisor-Pro/imagens/Tuning_Server.png)
 Sugestões de parâmetros como `StartPollers`, `StartPingers`, `StartDBSyncers`, `CacheSize`, etc., calculados com base no número de itens, hosts e tipo de coleta.
 
 ### zabbix_proxy.conf (por proxy)
