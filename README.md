@@ -116,7 +116,7 @@ O banco SQLite é persistido em `./data/advisor.db` via volume no docker-compose
 | `token` | Sim | Token de API do Zabbix |
 | `frontend_url` | Não | URL do frontend para gerar links diretos no relatório |
 | `verify_ssl` | Não | Verificar certificado SSL (padrão: desabilitado) |
-
+![Logon](imagens\login.png)
 ## Ações de correção automática
 
 Todas as ações possuem **preview** antes de executar (dry-run mostrando o que será afetado).
@@ -128,18 +128,22 @@ Todas as ações possuem **preview** antes de executar (dry-run mostrando o que 
 | `delete_disabled_hosts` | Remove permanentemente hosts desativados |
 | `enable_disabled_hosts` | Reativa hosts desativados |
 
+![açoes](imagens\correcao.png)
+![açoes](imagens\correcao1.png)
+
 > **Atenção:** as ações `delete_*` são irreversíveis. Sempre revise o preview antes de confirmar.
 
+![Confirmacoes](imagens\Confirmacoes.png)
 ## Tuning sugerido
 
 O relatório inclui duas seções de tuning baseadas nos dados coletados:
 
 ### zabbix_server.conf
-
+![Tuning sugerido Server](imagens\Tuning_Server.png)
 Sugestões de parâmetros como `StartPollers`, `StartPingers`, `StartDBSyncers`, `CacheSize`, etc., calculados com base no número de itens, hosts e tipo de coleta.
 
 ### zabbix_proxy.conf (por proxy)
-
+![Tuning sugerido Server](imagens\Tuning_Proxy.png)
 Para cada proxy detectado, sugestões individuais considerando a proporção de hosts e itens monitorados por aquele proxy.
 
 ## Observações técnicas
