@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório - Zabbix Advisor Pro</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<main class="container">
+    <section class="hero card">
+        <div>
+            <span class="badge">Relatório gerado</span>
+            <h1>Zabbix Advisor Pro</h1>
+            <p>Versão da API detectada: <strong>{{ result.version }}</strong></p>
+            <a class="link-back" href="/">Nova análise</a>
+        </div>
+    </section>
+
+    <section class="kpi-grid">
+        <div class="card kpi"><span>Total Hosts</span><strong>{{ result.report.kpis.total_hosts }}</strong></div>
+        <div class="card kpi"><span>Hosts Ativos</span><strong>{{ result.report.kpis.enabled_hosts }}</strong></div>
+        <div class="card kpi"><span>Templates</span><strong>{{ result.report.kpis.total_templates }}</strong></div>
+        <div class="card kpi"><span>Itens</span><strong>{{ result.report.kpis.total_items }}</strong></div>
+        <div class="card kpi danger"><span>Unsupported</span><strong>{{ result.report.kpis.unsupported_items }}</strong></div>
+        <div class="card kpi"><span>SNMP</span><strong>{{ result.report.kpis.snmp_items }}</strong></div>
+        <div class="card kpi warn"><span>Assíncronos candidatos</span><strong>{{ result.report.kpis.async_snmp_candidates }}</strong></div>
+        <div class="card kpi"><span>Triggers habilitadas</span><strong>{{ result.report.kpis.triggers_enabled }}</strong></div>
+    </section>
+
+    <section class="card">
+        <h2>Recomendações</h2>
+        {% if result.report.recommendations %}
+            <div class="recommendations">
+            {% for rec in result.report.recommendations %}
+                <article class="recommendation {{ rec.severity }}">
+                    <div class="pill {{ rec.severity }}">{{ rec.severity|upper }}</div>
+                    <h3>{{ rec.title }}</h3>
+                    <p>{{ rec.detail }}</p>
+                    <p><strong>Ação sugerida:</strong> {{ rec.action }}</p>
+                </article>
+            {% endfor %}
+            </div>
+        {% else %}
+            <p>Nenhuma recomendação crítica foi gerada nesta execução.</p>
+        {% endif %}
+    </section>
+
+    <section class="two-col">
+        <div class="card">
+            <h2>Top Hosts ofensores</h2>
+            <table>
+                <thead>
+                <tr>
+                    <th>Host</th>
+                    <th>Itens</th>
+                    <th>Unsupported</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for host in result.report.top_hosts %}
+                <tr>
+                    <td>{{ host.host }}</td>
+                    <td>{{ host.item_count }}</td>
+                    <td>{{ host.unsupported_count }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Top Templates ofensores</h2>
+            <table>
+                <thead>
+                <tr>
+                    <th>Template</th>
+                    <th>Itens</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for template in result.report.top_templates %}
+                <tr>
+                    <td>{{ template.name }}</td>
+                    <td>{{ template.item_count }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {% if result.report.links %}
+    <section class="card">
+        <h2>Atalhos para correção</h2>
+        <div class="quick-links">
+            {% for label, link in result.report.links.items() %}
+                <a href="{{ link }}" target="_blank" rel="noopener">{{ label }}</a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</main>
+</body>
+</html>

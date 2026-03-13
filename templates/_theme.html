@@ -1,0 +1,49 @@
+<!-- Theme controls — include this inside <body> on every page -->
+<div class="theme-bar">
+  <button id="themeToggle" class="theme-btn" title="Alternar claro/escuro">☀️</button>
+  <button id="themeGear"   class="theme-btn" title="Personalizar tema">⚙</button>
+</div>
+
+<div id="settingsPanel" class="settings-panel hidden" role="dialog" aria-label="Personalização de tema">
+  <div class="settings-header">
+    <strong>Personalização</strong>
+    <button class="settings-close" onclick="document.getElementById('settingsPanel').classList.add('hidden')" aria-label="Fechar">✕</button>
+  </div>
+
+  <!-- Theme -->
+  <div class="settings-section">
+    <span class="settings-label">Tema</span>
+    <div class="theme-options">
+      <button data-theme-btn="dark"  class="theme-opt">🌙 Escuro</button>
+      <button data-theme-btn="light" class="theme-opt">☀️ Claro</button>
+    </div>
+  </div>
+
+  <!-- Accent -->
+  <div class="settings-section">
+    <span class="settings-label">Cor de destaque</span>
+    <div class="accent-options">
+      <button class="accent-swatch" data-accent-btn="blue"   title="Azul"   style="background:#6ea8fe"></button>
+      <button class="accent-swatch" data-accent-btn="purple" title="Roxo"   style="background:#a78bfa"></button>
+      <button class="accent-swatch" data-accent-btn="green"  title="Verde"  style="background:#2ecc71"></button>
+      <button class="accent-swatch" data-accent-btn="orange" title="Laranja" style="background:#f97316"></button>
+      <button class="accent-swatch" data-accent-btn="pink"   title="Rosa"   style="background:#f472b6"></button>
+      <label class="accent-swatch accent-custom" title="Cor personalizada">
+        <input type="color" id="accentCustom" value="#6ea8fe">
+        <span>+</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Font -->
+  <div class="settings-section">
+    <span class="settings-label">Fonte</span>
+    <select id="fontSelect" class="settings-select">
+      <option value="Inter, system-ui, Arial, sans-serif">Inter (padrão)</option>
+      <option value="Roboto, system-ui, Arial, sans-serif">Roboto</option>
+      <option value="'Open Sans', system-ui, Arial, sans-serif">Open Sans</option>
+      <option value="'DM Sans', system-ui, Arial, sans-serif">DM Sans</option>
+      <option value="system-ui, Arial, sans-serif">Sistema</option>
+    </select>
+  </div>
+</div>

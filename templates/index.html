@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ app_name }}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="/static/js/theme.js"></script>
+</head>
+<body>
+  <main class="container">
+    <section class="hero card">
+      <div>
+        <p class="eyebrow">Healthcheck inteligente para Zabbix</p>
+        <h1>{{ app_name }}</h1>
+        <p class="muted">Analise seu ambiente, encontre ofensores, visualize tendências e aplique correções automáticas.</p>
+      </div>
+      <div class="hero-actions">
+        <a class="button secondary" href="/history">Histórico</a>
+        <a class="button secondary" href="/docs" target="_blank">API Docs</a>
+      </div>
+    </section>
+
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+
+    <section class="card form-card">
+      <h2>Gerar análise</h2>
+      <form action="/report" method="post" class="grid-form" id="analyzeForm" novalidate>
+        <label>
+          URL base do Zabbix <span class="required">*</span>
+          <input type="url" name="url" id="url" placeholder="https://zabbix.seudominio.com" required autocomplete="url">
+          <span class="field-error" id="urlError"></span>
+        </label>
+        <label>
+          Token da API <span class="required">*</span>
+          <input type="password" name="token" id="token" placeholder="Cole o token aqui" required autocomplete="off">
+          <span class="field-error" id="tokenError"></span>
+        </label>
+        <label>
+          URL do frontend (opcional)
+          <input type="url" name="frontend_url" placeholder="https://zabbix.seudominio.com">
+          <span class="field-hint">Necessário para gerar links diretos no relatório</span>
+        </label>
+        <label class="label-inline">
+          <input type="checkbox" name="verify_ssl" value="true" id="verify_ssl">
+          Verificar certificado SSL
+          <span class="field-hint">Desmarque se o Zabbix usar certificado autoassinado</span>
+        </label>
+        <button type="submit" id="submitBtn">
+          <span id="submitText">Executar healthcheck</span>
+          <span id="submitSpinner" class="spinner hidden"></span>
+        </button>
+      </form>
+    </section>
+
+    {% if recent_snapshots %}
+    <section class="card">
+      <div class="section-header">
+        <h2>Análises recentes</h2>
+        <a class="link-muted" href="/history">Ver todas →</a>
+      </div>
+      <ul class="snapshot-list">
+        {% for snap in recent_snapshots %}
+        <li>
+          <div class="snap-info">
+            <strong class="snap-url">{{ snap.zabbix_url }}</strong>
+            <span class="muted small">{{ snap.created_at[:19] | replace('T', ' ') }}</span>
+          </div>
+          <div class="snap-kpis">
+            <span class="kpi-pill">{{ snap.totals.get('hosts', 0) }} hosts</span>
+            <span class="kpi-pill">{{ snap.totals.get('items', 0) }} itens</span>
+            {% if snap.totals.get('unsupported_items', 0) > 0 %}
+            <span class="kpi-pill danger">{{ snap.totals.get('unsupported_items', 0) }} unsupported</span>
+            {% endif %}
+          </div>
+          <a class="button secondary small" href="/history/{{ snap.id }}">Ver</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </main>
+
+  {% include "_theme.html" %}
+
+  <script>
+    const form = document.getElementById('analyzeForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function isValidUrl(val) {
+      try { new URL(val); return val.startsWith('http'); } catch { return false; }
+    }
+
+    form.addEventListener('submit', function(e) {
+      let valid = true;
+      const url = document.getElementById('url').value.trim();
+      const token = document.getElementById('token').value.trim();
+      document.getElementById('urlError').textContent = '';
+      document.getElementById('tokenError').textContent = '';
+
+      if (!isValidUrl(url)) {
+        document.getElementById('urlError').textContent = 'Informe uma URL válida (https://...)';
+        valid = false;
+      }
+      if (token.length < 10) {
+        document.getElementById('tokenError').textContent = 'Token parece inválido (mínimo 10 caracteres)';
+        valid = false;
+      }
+
+      if (!valid) { e.preventDefault(); return; }
+
+      document.getElementById('submitText').textContent = 'Analisando...';
+      document.getElementById('submitSpinner').classList.remove('hidden');
+      submitBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>

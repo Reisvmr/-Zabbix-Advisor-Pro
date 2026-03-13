@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico — {{ app_name }}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="/static/js/theme.js"></script>
+</head>
+<body>
+  <main class="container">
+    <section class="hero card">
+      <div>
+        <p class="eyebrow">Histórico de análises</p>
+        <h1>{{ app_name }}</h1>
+        <p class="muted">Todas as análises salvas, ordenadas da mais recente para a mais antiga.</p>
+      </div>
+      <div class="actions">
+        <a class="button secondary" href="/">Nova análise</a>
+      </div>
+    </section>
+
+    {% if snapshots %}
+    <section class="card">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Data</th>
+            <th>Zabbix URL</th>
+            <th>Hosts</th>
+            <th>Itens</th>
+            <th>Não Sup.</th>
+            <th>Desab.</th>
+            <th>Triggers</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for snap in snapshots %}
+          <tr>
+            <td class="muted small">{{ snap.id }}</td>
+            <td class="small">{{ snap.created_at[:19] | replace('T', ' ') }}</td>
+            <td class="snap-url small">{{ snap.zabbix_url }}</td>
+            <td>{{ snap.totals.get('hosts', '-') }}</td>
+            <td>{{ snap.totals.get('items', '-') }}</td>
+            <td class="{{ 'danger-text' if snap.totals.get('unsupported_items', 0) > 0 else '' }}">
+              {{ snap.totals.get('unsupported_items', '-') }}
+            </td>
+            <td class="{{ 'warn-text' if snap.totals.get('disabled_items', 0) > 0 else '' }}">
+              {{ snap.totals.get('disabled_items', '-') }}
+            </td>
+            <td class="{{ 'danger-text' if snap.totals.get('problem_triggers', 0) > 0 else '' }}">
+              {{ snap.totals.get('problem_triggers', '-') }}
+            </td>
+            <td>
+              <div class="table-actions">
+                <a class="button secondary small" href="/history/{{ snap.id }}">Ver</a>
+                <a class="button secondary small" href="/history/{{ snap.id }}/export/csv">CSV</a>
+                <a class="button secondary small" href="/history/{{ snap.id }}/export/pdf">PDF</a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% else %}
+    <section class="card">
+      <p class="muted">Nenhuma análise encontrada. <a href="/">Execute a primeira análise.</a></p>
+    </section>
+    {% endif %}
+  </main>
+
+  {% include "_theme.html" %}
+</body>
+</html>

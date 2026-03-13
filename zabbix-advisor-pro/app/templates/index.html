@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zabbix Advisor Pro</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <main class="container">
+        <section class="hero card">
+            <div>
+                <span class="badge">Healthcheck profissional</span>
+                <h1>Zabbix Advisor Pro</h1>
+                <p>Analise seu ambiente Zabbix e receba recomendações claras, rápidas e acionáveis. Menos chute, mais tuning.</p>
+            </div>
+        </section>
+
+        <section class="card form-card">
+            <h2>Executar análise</h2>
+            {% if error %}
+            <div class="alert error">{{ error }}</div>
+            {% endif %}
+            <form method="post" action="/">
+                <label>URL base do Zabbix</label>
+                <input type="text" name="zabbix_url" placeholder="https://monitoramento.seudominio.com" required>
+
+                <label>Token da API</label>
+                <input type="password" name="api_token" placeholder="Cole seu token" required>
+
+                <label>URL do frontend do Zabbix</label>
+                <input type="text" name="frontend_url" placeholder="https://monitoramento.seudominio.com">
+
+                <button type="submit">Gerar healthcheck</button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

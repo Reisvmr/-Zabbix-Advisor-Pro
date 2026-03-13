@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório — {{ app_name }}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="/static/js/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <main class="container">
+
+    <!-- Header -->
+    <section class="hero card report-header">
+      <div>
+        <p class="eyebrow">Relatório{% if data.created_at %} — {{ data.created_at[:19] | replace('T', ' ') }}{% endif %}</p>
+        <h1>{{ app_name }}</h1>
+        <p class="muted">{{ zabbix_url }}</p>
+      </div>
+      <div class="actions">
+        <a class="button secondary" href="/">Nova análise</a>
+        <a class="button secondary" href="/history">Histórico</a>
+        {% if snapshot_id %}
+        <a class="button secondary" href="/history/{{ snapshot_id }}/export/csv">Export CSV</a>
+        <a class="button secondary" href="/history/{{ snapshot_id }}/export/pdf">Export PDF</a>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- KPI Cards -->
+    <section class="kpi-grid">
+      {% set kpi_labels = {
+        'hosts': 'Hosts',
+        'templates': 'Templates',
+        'items': 'Itens',
+        'triggers': 'Triggers',
+        'unsupported_items': 'Não Suportados',
+        'disabled_items': 'Itens Desab.',
+        'disabled_hosts': 'Hosts Desab.',
+        'unavailable_hosts': 'Hosts Indisp.',
+        'snmp_candidates': 'Itens SNMP',
+        'problem_triggers': 'Triggers Ativos',
+        'proxies': 'Proxies'
+      } %}
+      {% set kpi_danger = ['unsupported_items', 'problem_triggers', 'unavailable_hosts'] %}
+      {% set kpi_warn = ['disabled_items', 'disabled_hosts'] %}
+      {% for key, val in data.totals.items() %}
+      {% set cls = 'danger' if key in kpi_danger and val > 0 else ('warn' if key in kpi_warn and val > 0 else '') %}
+      <article class="card kpi {{ cls }}">
+        <span class="kpi-label">{{ kpi_labels.get(key, key.replace('_', ' ').title()) }}</span>
+        <strong class="kpi-value">{{ val }}</strong>
+      </article>
+      {% endfor %}
+    </section>
+
+    <!-- Charts Row 1 -->
+    <section class="grid-three">
+      <article class="card">
+        <h3>Estado dos Itens</h3>
+        <div class="chart-wrap"><canvas id="chartDonut"></canvas></div>
+      </article>
+      <article class="card">
+        <h3>Tipos de Item</h3>
+        <div class="chart-wrap"><canvas id="chartTypes"></canvas></div>
+      </article>
+      <article class="card">
+        <h3>Tendência Histórica</h3>
+        <div class="chart-wrap" id="trendWrap"><canvas id="chartTrend"></canvas></div>
+      </article>
+    </section>
+
+    <!-- Charts Row 2 -->
+    <section class="grid-two">
+      <article class="card">
+        <h3>Top Hosts por Volume de Itens</h3>
+        <div class="chart-wrap chart-bar"><canvas id="chartHosts"></canvas></div>
+      </article>
+      <article class="card">
+        <h3>Top Templates por Score</h3>
+        <div class="chart-wrap chart-bar"><canvas id="chartTemplates"></canvas></div>
+      </article>
+    </section>
+
+    {% if data.proxy_data and data.proxy_data.total_proxies > 0 %}
+    <section class="card">
+      <h3>Carga por Proxy (hosts monitorados)</h3>
+      <div class="chart-wrap chart-bar-sm"><canvas id="chartProxies"></canvas></div>
+    </section>
+    {% endif %}
+
+    <!-- Top Lists -->
+    <section class="grid-two">
+      <article class="card">
+        <h2>Top Hosts</h2>
+        <ul class="rank-list">
+          {% for item in data.top_hosts %}
+          <li>
+            <span class="rank-name">{{ item.name }}</span>
+            <div class="rank-right">
+              <div class="rank-bar-wrap">
+                <div class="rank-bar" style="width:{{ [(item.value / ([data.top_hosts[0].value, 1]|max) * 100)|int, 100]|min }}%"></div>
+              </div>
+              <strong>{{ item.value }}</strong>
+              {% if item.link %}<a href="{{ item.link }}" target="_blank" rel="noopener" class="link-small">↗</a>{% endif %}
+            </div>
+          </li>
+          {% else %}<li class="muted">Nenhum host encontrado.</li>
+          {% endfor %}
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Top Templates</h2>
+        <ul class="rank-list">
+          {% for item in data.top_templates %}
+          <li>
+            <span class="rank-name">{{ item.name }}</span>
+            <div class="rank-right">
+              <div class="rank-bar-wrap">
+                <div class="rank-bar" style="width:{{ [(item.value / ([data.top_templates[0].value, 1]|max) * 100)|int, 100]|min }}%"></div>
+              </div>
+              <strong>{{ item.value }}</strong>
+              {% if item.link %}<a href="{{ item.link }}" target="_blank" rel="noopener" class="link-small">↗</a>{% endif %}
+            </div>
+          </li>
+          {% else %}<li class="muted">Nenhum template encontrado.</li>
+          {% endfor %}
+        </ul>
+      </article>
+    </section>
+
+    <!-- Recommendations -->
+    <section class="card">
+      <div class="section-header">
+        <h2>Recomendações</h2>
+        {% if not readonly %}<span class="muted small">Use "Corrigir" para aplicar correções automáticas</span>{% endif %}
+      </div>
+      <div class="recommendations">
+        {% for rec in data.recommendations %}
+        <article class="recommendation {{ rec.severity }}">
+          <div class="badge">{{ rec.severity }}</div>
+          <div class="rec-body">
+            <h3>{{ rec.title }}</h3>
+            <p>{{ rec.detail }}</p>
+            {% if rec.action %}<p class="rec-action"><strong>Ação:</strong> {{ rec.action }}</p>{% endif %}
+            {% if rec.link %}<a href="{{ rec.link }}" target="_blank" rel="noopener" class="link-small">Abrir frontend ↗</a>{% endif %}
+          </div>
+          {% if rec.fix_action and not readonly %}
+          <div class="rec-fix">
+            <button class="button fix-btn" onclick="openFixModal('{{ rec.fix_action }}', '{{ rec.title }}')">Corrigir</button>
+          </div>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- Poller Tuning -->
+    {% if data.poller_tuning %}
+    <section class="card">
+      <div class="section-header">
+        <h2>Tuning de Pollers — zabbix_server.conf</h2>
+        <span class="muted small">Sugestões calculadas com base nos {{ data.totals.items }} itens e {{ data.totals.proxies }} proxy(s)</span>
+      </div>
+      <p class="muted" style="margin-bottom:16px">Estes valores são estimativas baseadas nos itens coletados. Valide com o <code>zabbix[process,*,avg,busy]</code> antes de aplicar. Reinicie o servidor após alterar.</p>
+      <div class="tuning-table-wrap">
+        <table class="tuning-table">
+          <thead>
+            <tr>
+              <th>Parâmetro</th>
+              <th>Padrão</th>
+              <th>Sugerido</th>
+              <th>Impacto</th>
+              <th>Justificativa</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in data.poller_tuning %}
+            <tr class="tuning-{{ t.impact }}">
+              <td><code class="param-name">{{ t.param }}</code></td>
+              <td class="muted small">{{ t.current_default }}</td>
+              <td><strong>{{ t.suggested }}</strong></td>
+              <td>
+                <span class="tuning-badge tuning-badge-{{ t.impact }}">
+                  {{ 'Alto' if t.impact == 'high' else ('Médio' if t.impact == 'medium' else 'OK') }}
+                </span>
+              </td>
+              <td class="muted small">{{ t.reason }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if data.proxy_data and data.proxy_data.total_proxies > 0 %}
+      <div class="tuning-note">
+        <strong>Proxies detectados ({{ data.proxy_data.total_proxies }}):</strong>
+        {% for p in data.proxy_data.proxy_host_counts %}
+        <span class="kpi-pill">{{ p.name }} — {{ p.value }} hosts</span>
+        {% endfor %}
+        <br><span class="muted small">Os valores já consideram que proxies absorvem parte da carga do servidor.</span>
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- Proxy Tuning (per proxy) -->
+    {% if data.proxy_tuning %}
+    <section class="card">
+      <div class="section-header">
+        <h2>Tuning por Proxy — zabbix_proxy.conf</h2>
+        <span class="muted small">Estimativas individuais por proxy baseadas nos hosts monitorados</span>
+      </div>
+      <p class="muted" style="margin-bottom:16px">
+        Os itens são distribuídos proporcionalmente pela razão média de itens/host do ambiente.
+        Itens reais do proxy podem variar — use como ponto de partida.
+      </p>
+
+      <div class="proxy-tabs">
+        {% for pt in data.proxy_tuning %}
+        <button class="proxy-tab {% if loop.first %}active{% endif %}"
+                onclick="showProxy({{ loop.index0 }}, this)">
+          {{ pt.proxy_name }}
+          <span class="proxy-tab-meta">{{ pt.host_count }} hosts · ~{{ pt.estimated_items }} itens</span>
+        </button>
+        {% endfor %}
+      </div>
+
+      {% for pt in data.proxy_tuning %}
+      <div class="proxy-panel {% if not loop.first %}hidden{% endif %}" id="proxy-panel-{{ loop.index0 }}">
+        <div class="proxy-panel-header">
+          <strong>{{ pt.proxy_name }}</strong>
+          <span class="muted small">{{ pt.host_count }} hosts monitorados · ~{{ pt.estimated_items }} itens estimados</span>
+        </div>
+        <div class="tuning-table-wrap">
+          <table class="tuning-table">
+            <thead>
+              <tr>
+                <th>Parâmetro</th>
+                <th>Padrão</th>
+                <th>Sugerido</th>
+                <th>Impacto</th>
+                <th>Justificativa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in pt.suggestions %}
+              <tr class="tuning-{{ s.impact }}">
+                <td><code class="param-name">{{ s.param }}</code></td>
+                <td class="muted small">{{ s.current_default }}</td>
+                <td><strong>{{ s.suggested }}</strong></td>
+                <td>
+                  <span class="tuning-badge tuning-badge-{{ s.impact }}">
+                    {{ 'Alto' if s.impact == 'high' else ('Médio' if s.impact == 'medium' else 'OK') }}
+                  </span>
+                </td>
+                <td class="muted small">{{ s.reason }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- Auto-correction Panel -->
+    {% if not readonly %}
+    <section class="card">
+      <h2>Correções Automáticas</h2>
+      <p class="muted">Ações de manutenção executáveis diretamente neste ambiente Zabbix. Sempre faça backup antes.</p>
+      <div class="fix-grid">
+        <div class="fix-card">
+          <div class="fix-icon">🚫</div>
+          <h4>Desabilitar Não Suportados</h4>
+          <p class="muted small">Desabilita itens em estado unsupported para parar erros contínuos.</p>
+          <button class="button" onclick="openFixModal('disable_unsupported', 'Desabilitar Itens Não Suportados')">Preview & Executar</button>
+        </div>
+        <div class="fix-card">
+          <div class="fix-icon">🗑️</div>
+          <h4>Remover Itens Desabilitados</h4>
+          <p class="muted small">Remove permanentemente todos os itens desabilitados.</p>
+          <button class="button danger-btn" onclick="openFixModal('delete_disabled_items', 'Remover Itens Desabilitados')">Preview & Executar</button>
+        </div>
+        <div class="fix-card">
+          <div class="fix-icon">✅</div>
+          <h4>Habilitar Hosts Desabilitados</h4>
+          <p class="muted small">Reativa todos os hosts com monitoramento desabilitado.</p>
+          <button class="button" onclick="openFixModal('enable_disabled_hosts', 'Habilitar Hosts Desabilitados')">Preview & Executar</button>
+        </div>
+        <div class="fix-card">
+          <div class="fix-icon">🗑️</div>
+          <h4>Remover Hosts Desabilitados</h4>
+          <p class="muted small">Remove permanentemente todos os hosts desabilitados.</p>
+          <button class="button danger-btn" onclick="openFixModal('delete_disabled_hosts', 'Remover Hosts Desabilitados')">Preview & Executar</button>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+  </main>
+
+  <!-- Fix Modal -->
+  {% if not readonly %}
+  <div id="fixModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modalTitle">Correção automática</h3>
+      <div id="modalPreview" class="modal-preview hidden">
+        <p id="previewText"></p>
+        <p class="muted small">Confirme para executar a ação. Esta operação não pode ser desfeita.</p>
+      </div>
+      <div id="modalResult" class="modal-result hidden">
+        <p id="resultText"></p>
+      </div>
+      <label class="label-inline ssl-toggle">
+        <input type="checkbox" id="modalVerifySsl">
+        Verificar certificado SSL
+      </label>
+      <div id="modalLoading" class="modal-loading hidden">
+        <div class="spinner-lg"></div>
+        <p class="muted">Processando...</p>
+      </div>
+      <div class="modal-actions">
+        <button class="button secondary" onclick="closeModal()">Fechar</button>
+        <button class="button" id="btnPreview" onclick="doPreview()">Ver impacto</button>
+        <button class="button danger-btn hidden" id="btnExecute" onclick="doExecute()">Confirmar e executar</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <script>
+    const ZABBIX_URL = {{ zabbix_url | tojson }};
+    const ZABBIX_TOKEN = {{ zabbix_token | tojson }};
+    const VERIFY_SSL_DEFAULT = {{ (verify_ssl | default(false)) | tojson }};
+    const CHART_DATA = {{ chart_data_json | safe }};
+    const TREND_DATA = {{ trend_data_json | safe }};
+
+    // ── Chart helpers ─────────────────────────────────────────────────────────
+    const COLORS = ['#6ea8fe','#ff6b6b','#2ecc71','#f1c40f','#a78bfa','#38bdf8','#fb923c','#f472b6','#34d399','#fbbf24'];
+    const gridColor = 'rgba(255,255,255,0.07)';
+    const textColor = '#a9b4d0';
+    const baseOpts = { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: textColor, font: { size: 11 } } } } };
+
+    // Donut — item states
+    if (CHART_DATA.kpi_donut) {
+      const d = CHART_DATA.kpi_donut;
+      new Chart(document.getElementById('chartDonut'), {
+        type: 'doughnut',
+        data: { labels: d.labels, datasets: [{ data: d.values, backgroundColor: d.colors, borderWidth: 2, borderColor: '#141b34' }] },
+        options: { ...baseOpts, cutout: '65%' }
+      });
+    }
+
+    // Pie — item types
+    if (CHART_DATA.item_types_pie) {
+      const d = CHART_DATA.item_types_pie;
+      new Chart(document.getElementById('chartTypes'), {
+        type: 'pie',
+        data: { labels: d.labels, datasets: [{ data: d.values, backgroundColor: COLORS, borderWidth: 2, borderColor: '#141b34' }] },
+        options: { ...baseOpts }
+      });
+    }
+
+    // Trend line
+    if (TREND_DATA && TREND_DATA.length > 1) {
+      const labels = TREND_DATA.map(t => t.created_at.slice(5,16).replace('T',' '));
+      new Chart(document.getElementById('chartTrend'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Itens', data: TREND_DATA.map(t => t.totals.items||0), borderColor:'#6ea8fe', backgroundColor:'rgba(110,168,254,0.1)', tension:0.3, fill:true },
+            { label: 'Não Suportados', data: TREND_DATA.map(t => t.totals.unsupported_items||0), borderColor:'#ff6b6b', backgroundColor:'rgba(255,107,107,0.1)', tension:0.3, fill:true },
+          ]
+        },
+        options: { ...baseOpts, scales: { x: { ticks:{color:textColor,maxTicksLimit:6}, grid:{color:gridColor} }, y: { ticks:{color:textColor}, grid:{color:gridColor} } } }
+      });
+    } else {
+      document.getElementById('trendWrap').innerHTML = '<p class="muted small" style="padding:1.5rem 0;text-align:center">Execute mais análises para ver tendências.</p>';
+    }
+
+    // Bar — top hosts
+    if (CHART_DATA.top_hosts_bar?.labels?.length) {
+      const d = CHART_DATA.top_hosts_bar;
+      new Chart(document.getElementById('chartHosts'), {
+        type: 'bar',
+        data: { labels: d.labels, datasets: [{ label:'Itens', data:d.values, backgroundColor:'#6ea8fe66', borderColor:'#6ea8fe', borderWidth:1 }] },
+        options: { ...baseOpts, indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:textColor},grid:{color:gridColor}}, y:{ticks:{color:textColor}} } }
+      });
+    }
+
+    // Bar — top templates
+    if (CHART_DATA.top_templates_bar?.labels?.length) {
+      const d = CHART_DATA.top_templates_bar;
+      new Chart(document.getElementById('chartTemplates'), {
+        type: 'bar',
+        data: { labels: d.labels, datasets: [{ label:'Score', data:d.values, backgroundColor:'#a78bfa66', borderColor:'#a78bfa', borderWidth:1 }] },
+        options: { ...baseOpts, indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:textColor},grid:{color:gridColor}}, y:{ticks:{color:textColor}} } }
+      });
+    }
+
+    // Bar — proxies
+    const proxyCanvas = document.getElementById('chartProxies');
+    if (proxyCanvas && CHART_DATA.proxy_bar?.labels?.length) {
+      const d = CHART_DATA.proxy_bar;
+      new Chart(proxyCanvas, {
+        type: 'bar',
+        data: { labels: d.labels, datasets: [{ label:'Hosts', data:d.values, backgroundColor:'#2ecc7166', borderColor:'#2ecc71', borderWidth:1 }] },
+        options: { ...baseOpts, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:textColor},grid:{color:gridColor}}, y:{ticks:{color:textColor},grid:{color:gridColor}} } }
+      });
+    }
+
+    // ── Proxy tabs ───────────────────────────────────────────────────────────
+    function showProxy(idx, btn) {
+      document.querySelectorAll('.proxy-panel').forEach(p => p.classList.add('hidden'));
+      document.querySelectorAll('.proxy-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('proxy-panel-' + idx).classList.remove('hidden');
+      btn.classList.add('active');
+    }
+
+    // ── Auto-correction modal ─────────────────────────────────────────────────
+    let currentAction = null;
+
+    function openFixModal(action, title) {
+      currentAction = action;
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalPreview').classList.add('hidden');
+      document.getElementById('modalResult').classList.add('hidden');
+      document.getElementById('modalLoading').classList.add('hidden');
+      document.getElementById('btnExecute').classList.add('hidden');
+      document.getElementById('btnPreview').classList.remove('hidden');
+      document.getElementById('modalVerifySsl').checked = VERIFY_SSL_DEFAULT;
+      document.getElementById('fixModal').classList.remove('hidden');
+    }
+
+    function getVerifySsl() {
+      return document.getElementById('modalVerifySsl').checked;
+    }
+
+    function closeModal() {
+      document.getElementById('fixModal').classList.add('hidden');
+      currentAction = null;
+    }
+
+    async function doPreview() {
+      if (!currentAction) return;
+      setLoading(true);
+      try {
+        const res = await fetch('/api/v1/corrections/preview', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ url: ZABBIX_URL, token: ZABBIX_TOKEN, action: currentAction, verify_ssl: getVerifySsl() })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Erro ao consultar');
+        document.getElementById('previewText').textContent = `Esta ação irá afetar ${data.count} registro(s).`;
+        document.getElementById('modalPreview').classList.remove('hidden');
+        document.getElementById('btnExecute').classList.remove('hidden');
+        document.getElementById('btnPreview').classList.add('hidden');
+      } catch(e) {
+        document.getElementById('previewText').textContent = 'Erro: ' + e.message;
+        document.getElementById('modalPreview').classList.remove('hidden');
+      } finally { setLoading(false); }
+    }
+
+    async function doExecute() {
+      if (!currentAction) return;
+      setLoading(true);
+      document.getElementById('btnExecute').classList.add('hidden');
+      try {
+        const res = await fetch('/api/v1/corrections/execute', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ url: ZABBIX_URL, token: ZABBIX_TOKEN, action: currentAction, verify_ssl: getVerifySsl() })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Erro ao executar');
+        document.getElementById('resultText').textContent = data.message || `Concluído. ${data.affected} registro(s) afetados.`;
+        document.getElementById('modalResult').classList.remove('hidden');
+        document.getElementById('modalPreview').classList.add('hidden');
+      } catch(e) {
+        document.getElementById('resultText').textContent = 'Erro: ' + e.message;
+        document.getElementById('modalResult').classList.remove('hidden');
+      } finally { setLoading(false); }
+    }
+
+    function setLoading(on) {
+      document.getElementById('modalLoading').classList.toggle('hidden', !on);
+    }
+
+    document.getElementById('fixModal')?.addEventListener('click', e => { if (e.target === document.getElementById('fixModal')) closeModal(); });
+  </script>
+
+  {% include "_theme.html" %}
+</body>
+</html>
